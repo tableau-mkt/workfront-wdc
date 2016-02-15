@@ -3,9 +3,7 @@
 var express = require('express'),
     request = require('request'),
     atob = require('atob'),
-    keys = Object.keys || require('object-keys'),
     workfrontApi = require('workfront-api'),
-    workfrontFields = require('./src/fields.js'),
     app = express(),
     port = process.env.PORT || 9001;
 
@@ -20,32 +18,36 @@ app.get('/', function (req, res) {
 // Create a proxy endpoint.
 app.get('/proxy', function (req, res) {
   // Note that the "buildApiFrom(path)" helper in main.js sends the API endpoint
-  // as a query parameter to our proxy. We read that in here and build the real
+  // as a header variable to our proxy. We read that in here and build the real
   // endpoint we want to hit.
-  console.log(workfrontFields);
-  var authParts = atob(req.header('authorization').substr(6)).split(':'),
-      workFrontUrl = authParts[0] + ':' + authParts[1],
-      workfrontApiKey = authParts[2],
+  var apiParts = JSON.parse(req.header('workfrontapi')),
+      username = atob(apiParts.username),
+      password = atob(apiParts.password),
+      objType = apiParts.objType,
+      options = apiParts.options,
       workfront = workfrontApi.ApiFactory.getInstance({
-        url: workFrontUrl,
+        url: apiParts.url,
         version: '4.0'
-      }),
-      options = {
-        portfolioID: req.query.portfolioID,
-        fields: Object.keys(workfrontFields.coreFields).join(','),
-        //fields: 'BCCompletionState,ID,URL,actualBenefit,actualCompletionDate,actualCost,actualDurationExpression,actualDurationMinutes,actualExpenseCost,actualHoursLastMonth,actualHoursLastThreeMonths,actualHoursThisMonth,actualHoursTwoMonthsAgo,actualLaborCost,actualRevenue,actualRiskCost,actualStartDate,actualValue,actualWorkRequired,actualWorkRequiredExpression,alignment,alignmentScoreCardID,allApprovedHours,allUnapprovedHours,approvalEstStartDate,approvalPlannedStartDate,approvalPlannedStartDay,approvalProcessID,approvalProjectedStartDate,approversString,auditTypes,autoBaselineRecurOn,autoBaselineRecurrenceType,billedRevenue,budget,budgetStatus,budgetedCompletionDate,budgetedCost,budgetedHours,budgetedLaborCost,budgetedStartDate,businessCaseStatusLabel,categoryID,companyID,completionType,condition,conditionType,convertedOpTaskEntryDate,convertedOpTaskName,convertedOpTaskOriginatorID,cpi,csi,currency,currentApprovalStepID,customerID,deliverableScoreCardID,deliverableSuccessScore,deliverableSuccessScoreRatio,description,displayOrder,durationExpression,durationMinutes,eac,enableAutoBaselines,enteredByID,entryDate,estCompletionDate,estStartDate,extRefID,filterHourTypes,financeLastUpdateDate,fixedCost,fixedEndDate,fixedRevenue,fixedStartDate,groupID,hasBudgetConflict,hasCalcError,hasCompletionConstraint,hasDocuments,hasExpenses,hasMessages,hasNotes,hasRateOverride,hasResolvables,hasStartConstraint,hasTimedNotifications,lastCalcDate,lastConditionNoteID,lastNoteID,lastUpdateDate,lastUpdatedByID,levelingMode,milestonePathID,name,nextAutoBaselineDate,numberOpenOpTasks,olv,optimizationScore,ownerID,ownerPrivileges,percentComplete,performanceIndexMethod,personal,plannedBenefit,plannedCompletionDate,plannedCost,plannedDateAlignment,plannedExpenseCost,plannedHoursAlignment,plannedLaborCost,plannedRevenue,plannedRiskCost,plannedStartDate,plannedValue,popAccountID,portfolioID,portfolioPriority,previousStatus,priority,programID,progressStatus,projectedCompletionDate,projectedStartDate,queueDefID,referenceNumber,rejectionIssueID,remainingCost,remainingRevenue,remainingRiskCost,resourcePoolID,risk,riskPerformanceIndex,roi,scheduleID,scheduleMode,selectedOnPortfolioOptimizer,spi,sponsorID,status,statusUpdate,submittedByID,summaryCompletionType,templateID,totalHours,totalOpTaskCount,totalTaskCount,updateType,version,workRequired,workRequiredExpression',
-        '$$LIMIT': req.query.limit || 100
-      };
+      });
 
-  // Authenticate using an API token.
+  var setApiKey = function() {
+    // Basic Authentication (username is filled out)
+    if (username) {
+      // Retrieve the API token for this account.
+      return workfront.getApiKey(username, password);
+    }
+    else {
+      workfront.httpParams.apiKey = password;
+      return Promise.resolve(true);
+    }
+  };
+
+  // Always use GET.
   workfront.httpOptions.alwaysUseGet = true;
-  workfront.httpParams.apiKey = workfrontApiKey;
 
   // Make an HTTP request using the above specified options.
-  console.log(req.query.portfolioID);
-  workfront.search('proj', options).then(
+  setApiKey().then(workfront.search(objType, options).then(
     function(data) {
-      console.log('Get success. Received ' + data.length + ' records.');
       res.set('content-type', 'application/json');
       res.send(data);
     },
@@ -54,7 +56,7 @@ app.get('/proxy', function (req, res) {
       console.log('Get failure. Received data:');
       console.log(error);
     }
-  );
+  ));
 });
 
 var server = app.listen(port, function () {

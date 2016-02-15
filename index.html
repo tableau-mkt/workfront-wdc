@@ -14,21 +14,16 @@
   <div class="container-fluid">
     <div class="about">
       <h4>About</h4>
-      
-                <p class="text-muted">Add some information about your web data connector,
-          the service you're connecting to, your affiliation to it, or any other
-          background context. As always, provide contact information or social
-          links so people can report issues.
-        </p>
 
-      
+      <p class="text-muted">Basic web data connector for pulling
+        project and issues from Workfront/Attask into Tableau.
+      </p>
+
     </div>
     <div class="social">
       <h4>Contact</h4>
       <ul class="list-unstyled">
-        <li><a href="mailto:#">Email</a></li>
-        <li><a href="#">Follow on Twitter</a></li>
-        <li><a href="#">Connect on LinkedIn</a></li>
+        <li><a href="https://github.com/tableau-mkt/workfront-wdc">Github</a></li>
       </ul>
     </div>
   </div>
@@ -46,35 +41,48 @@
 <section class="jumbotron text-center">
   <div class="container">
     <h1 class="jumbotron-heading">Connect to Workfront</h1>
-    
-              <form>
-            
-                <p>
-    <input class="form-control" type="text" name="PortfolioID" id="PortfolioID" placeholder="Portfolio ID" />
-    <label class="sr-only" for="PortfolioID">Portfolio ID</label>
-</p>
-            
-            
-            
-            
-                
-                    <p>
-    <input class="form-control" type="text" name="username" id="username" placeholder="Username" />
-    <label class="sr-only" for="username">Username</label>
-</p>
-                
-                <p>
-    <input class="form-control" type="password" name="password" id="password" placeholder="Password or token" />
-    <label class="sr-only" for="password">Password or token</label>
-</p>
-            
-            
-            <div>
-                <input type="submit" value="Connect" class="btn btn-lg btn-primary btn-block" />
-            </div>
-        </form>
 
-    
+    <form>
+      <h4>Query</h4>
+      <p>
+        <select class="form-control" name="objType" id="objType">
+          <option value="OPTASK">Issue</option>
+          <option value="PROJ">Project</option>
+        </select>
+        <label class="sr-only" for="objType">Object Type</label>
+      </p>
+
+      <p>
+        <input class="form-control" type="text" name="projectID" id="projectID" placeholder="Project ID" />
+        <label class="sr-only" for="projectID">Project ID</label>
+      </p>
+
+      <p>
+        <textarea class="form-control" id="customFieldsUnparsed" name="customFieldsUnparsed" placeholder="DE:customStringField | string, int, float, bool,datetime" rows="5"></textarea>
+        <label class="sr-only" for="customFieldsUnparsed">CustomFields</label>
+      </p>
+
+      <h4>Connection settings</h4>
+      <p>
+        <input class="form-control" type="text" name="url" id="url" placeholder="https://www.workfront.com/" />
+        <label class="sr-only" for="url">Workfront URL</label>
+      </p>
+
+      <p>
+        <input class="form-control" type="text" name="username" id="username" placeholder="Username (Leave blank when using an API key)" />
+        <label class="sr-only" for="username">Username</label>
+      </p>
+
+      <p>
+        <input class="form-control" type="password" name="password" id="password" required="true" placeholder="Password or API key" />
+        <label class="sr-only" for="password">Password/API key</label>
+      </p>
+
+      <div>
+        <input type="submit" value="Connect" class="btn btn-lg btn-primary btn-block" />
+      </div>
+    </form>
+
   </div>
 </section>
 
