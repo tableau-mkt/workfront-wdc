@@ -276,17 +276,18 @@ var wdcw = window.wdcw || {};
    */
   $(document).ready(function connectorDocumentReady() {
     $('form').submit(function connectorFormSubmitHandler(e) {
-      var $fields = $('input, select, textarea').not('[type="password"],[type="submit"],[id="username"]'),
-          $password = $('#password'),
-          $username = $('#username'),
-          data = {};
+      var $fields = $('input, select, textarea').not('[type="password"],[type="submit"],[name="username"]'),
+        $password = $('input[type="password"]'),
+        $username = $('input[name="username"]'),
+        data = {};
 
       e.preventDefault();
 
       // Format connection data according to assumptions.
       $fields.map(function getValuesFromFields() {
-        var $this = $(this);
-        name = $this.attr('name');
+        var $this = $(this),
+          name = $this.attr('name');
+
         if (name) {
           data[name] = $this.val();
         }
