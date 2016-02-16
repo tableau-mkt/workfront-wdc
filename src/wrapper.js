@@ -286,7 +286,7 @@ var wdcw = window.wdcw || {};
       // Format connection data according to assumptions.
       $fields.map(function getValuesFromFields() {
         var $this = $(this),
-          name = $this.attr('name');
+            name = $this.attr('name');
 
         if (name) {
           data[name] = $this.val();
