@@ -277,9 +277,9 @@ var wdcw = window.wdcw || {};
   $(document).ready(function connectorDocumentReady() {
     $('form').submit(function connectorFormSubmitHandler(e) {
       var $fields = $('input, select, textarea').not('[type="password"],[type="submit"],[name="username"]'),
-        $password = $('input[type="password"]'),
-        $username = $('input[name="username"]'),
-        data = {};
+          $password = $('input[type="password"]'),
+          $username = $('input[name="username"]'),
+          data = {};
 
       e.preventDefault();
 
