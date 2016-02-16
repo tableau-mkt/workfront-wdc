@@ -38,6 +38,10 @@ module.exports = function($, tableau, wdcw) {
         // Perform set up tasks that should happen when Tableau is attempting to
         // retrieve data from your connector (the user is not prompted for any
         // information in this phase.
+
+        // Parse our connector data.
+        this.setConnectionData(prepareConnectionData(this.getConnectionData()));
+
         break;
 
       case tableau.phaseEnum.authPhase:
@@ -95,10 +99,8 @@ module.exports = function($, tableau, wdcw) {
   wdcw.columnHeaders = function columnHeaders(registerHeaders) {
     var processedColumns = [],
         column,
-        customFields = this.getConnectionData().customFields,
-        objType = this.getConnectionData().objType;
-
-    tableau.log(objType);
+        customFields = this.getConnectionData('customFields'),
+        objType = this.getConnectionData('objType');
 
     if (wdcFields.hasOwnProperty(objType)) {
       for (column in wdcFields[objType]) {
@@ -191,6 +193,60 @@ module.exports = function($, tableau, wdcw) {
   // You can write private methods for use above like this:
 
   /**
+   * Helper function to preparte connector data.
+   */
+  function prepareConnectionData(data) {
+    // Parse our raw custom fields string.
+    var lines = data.customFieldsRaw.split(/\n/),
+      parts,
+      fieldName,
+      fieldType,
+      customFields = {};
+
+    for (var i=0; i < lines.length; i++) {
+      parts = lines[i].split('|');
+
+      // Continue if we have a field name and type.
+      if (parts.length === 2) {
+        fieldName = parts[0].trim();
+        fieldType = parts[1].trim();
+
+        // Ensure we have a valid field type.
+        if (isValidFieldType(fieldType)) {
+          customFields[fieldName] = fieldType;
+        }
+        else {
+          tableau.log('Invalid field type encountered: ' + fieldType);
+        }
+      }
+    }
+
+    // Store our custom fields.
+    data.customFields = customFields;
+    return data;
+  }
+
+  /*
+   * Helper function to compare a given string to our Tableau field types.
+   *
+   * @param {string} fieldType
+   *   A given field type string.
+   * @return {bool}
+   *   True/false if a valid Tableau field type was found.
+   */
+  function isValidFieldType(fieldType) {
+    var tableauFieldTypes = [
+      'string',
+      'int',
+      'float',
+      'bool',
+      'datetime'
+    ];
+
+    return (bool)(tableauFieldTypes.indexOf(fieldType) !== -1);
+  }
+
+  /**
    * Helper function to build params passed along to our proxy endpoint.
    */
   function buildApiParams(username, password, data, lastRecord) {
@@ -201,8 +257,6 @@ module.exports = function($, tableau, wdcw) {
     if (customFields.length) {
       fields = fields.concat(customFields).join(',');
     }
-
-    console.log(data.projectID);
 
     return JSON.stringify({
       'username': btoa(username),
