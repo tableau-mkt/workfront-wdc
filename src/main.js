@@ -243,7 +243,7 @@ module.exports = function($, tableau, wdcw) {
       'datetime'
     ];
 
-    return (bool)(tableauFieldTypes.indexOf(fieldType) !== -1);
+    return (Boolean)(tableauFieldTypes.indexOf(fieldType) !== -1);
   }
 
   /**
