@@ -262,7 +262,7 @@ module.exports = function($, tableau, wdcw) {
       'username': btoa(username),
       'password': btoa(password),
       'url': data.url,
-      'limit': data.limit || 500,
+      'limit': data.limit || 5000,
       'last': lastRecord,
       'objType': data.objType,
       'options': {
