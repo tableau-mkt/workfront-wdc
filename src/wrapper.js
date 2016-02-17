@@ -142,14 +142,23 @@ var wdcw = window.wdcw || {};
    * Extension of the web data connector API that handles complex connection
    * data getting for the implementor.
    *
+   * @param {string} property
+   *  (optional) specific property to return value for.
    * @returns {object}
    *   An object representing connection data. Keys are assumed to be form input
    *   names; values are assumed to be form input values.
    *
    * @see connector.setConnectionData
    */
-  connector.getConnectionData = function getConnectionData() {
-    return tableau.connectionData ? JSON.parse(tableau.connectionData) : {};
+  connector.getConnectionData = function getConnectionData(property) {
+    var data = tableau.connectionData ? JSON.parse(tableau.connectionData) : {};
+
+    if (property && typeof property === "string" && data.hasOwnProperty(property)) {
+      return data[property];
+    }
+    else {
+      return data;
+    }
   };
 
   /**
@@ -252,7 +261,6 @@ var wdcw = window.wdcw || {};
     var message = 'There was a problem retrieving data: "' +
           textStatus + '" with error thrown: "' +
           errorThrown + '"';
-
     tableau.abortWithError(message);
   };
 
@@ -277,8 +285,9 @@ var wdcw = window.wdcw || {};
 
       // Format connection data according to assumptions.
       $fields.map(function getValuesFromFields() {
-        var $this = $(this);
+        var $this = $(this),
             name = $this.attr('name');
+
         if (name) {
           data[name] = $this.val();
         }

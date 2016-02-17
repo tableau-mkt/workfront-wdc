@@ -38,6 +38,10 @@ module.exports = function($, tableau, wdcw) {
         // Perform set up tasks that should happen when Tableau is attempting to
         // retrieve data from your connector (the user is not prompted for any
         // information in this phase.
+
+        // Parse our connector data.
+        this.setConnectionData(prepareConnectionData(this.getConnectionData()));
+
         break;
 
       case tableau.phaseEnum.authPhase:
@@ -94,18 +98,35 @@ module.exports = function($, tableau, wdcw) {
    */
   wdcw.columnHeaders = function columnHeaders(registerHeaders) {
     var processedColumns = [],
-        column;
+        column,
+        customFields = this.getConnectionData('customFields'),
+        objType = this.getConnectionData('objType');
 
-    for (column in wdcFields.coreFields) {
-      if (wdcFields.coreFields.hasOwnProperty(column)) {
-        processedColumns.push({
-          name: column,
-          type: wdcFields.coreFields[column]
-        })
+    if (wdcFields.hasOwnProperty(objType)) {
+      for (column in wdcFields[objType]) {
+        if (wdcFields[objType].hasOwnProperty(column)) {
+          processedColumns.push({
+            name: column,
+            type: wdcFields[objType][column]
+          })
+        }
       }
-    }
 
-    registerHeaders(processedColumns);
+      // Process our custom fields, if any.
+      for (column in customFields) {
+        if (customFields.hasOwnProperty(column)) {
+          processedColumns.push({
+            name: column,
+            type: customFields[column]
+          })
+        }
+      }
+
+      registerHeaders(processedColumns);
+    }
+    else {
+      tableau.abortWithError('Unsupported object type' + objType);
+    }
   };
 
 
@@ -146,20 +167,23 @@ module.exports = function($, tableau, wdcw) {
    *   triggered.
    */
   wdcw.tableData = function tableData(registerData, lastRecord) {
+    var data = this.getConnectionData(),
+        username = this.getUsername(),
+        password = this.getPassword();
+
     $.ajax({
-      url: buildApiFrom({
-        portfolioID: this.getConnectionData().PortfolioID,
-        limit: 500,
-        last: lastRecord
-      }),
+      url: '/proxy',
       headers: {
-        Authorization: 'Basic ' + btoa(this.getUsername() + ':' + this.getPassword())
+        workfrontapi: buildApiParams(username, password, data, lastRecord)
       },
       success: function dataRetrieved(response) {
         var processedData = [];
 
-        response.forEach
-        registerData(response);
+        response.forEach(function processData(data) {
+          processedData.push(data);
+        });
+
+        registerData(processedData);
       },
       // Use this.ajaxErrorHandler for basic error handling.
       error: this.ajaxErrorHandler
@@ -169,27 +193,83 @@ module.exports = function($, tableau, wdcw) {
   // You can write private methods for use above like this:
 
   /**
-   * Helper function to build an API endpoint that uses our proxy.
-   *
-   * @param {object} opts
-   *   Options to inform query parameters and paging.
+   * Helper function to preparte connector data.
    */
-  function buildApiFrom(opts) {
-    var path;
-    opts = opts || {};
-    path = '/proxy?portfolioID=' + opts.portfolioID;
+  function prepareConnectionData(data) {
+    // Parse our raw custom fields string.
+    var lines = data.customFieldsRaw.split(/\n/),
+      parts,
+      fieldName,
+      fieldType,
+      customFields = {};
 
-    // If opts.last was passed, build the URL so the next page is returned.
-    if (opts.last) {
-      path += '&page=' + opts.last + 1;
+    for (var i=0; i < lines.length; i++) {
+      parts = lines[i].split('|');
+
+      // Continue if we have a field name and type.
+      if (parts.length === 2) {
+        fieldName = parts[0].trim();
+        fieldType = parts[1].trim();
+
+        // Ensure we have a valid field type.
+        if (isValidFieldType(fieldType)) {
+          customFields[fieldName] = fieldType;
+        }
+        else {
+          tableau.log('Invalid field type encountered: ' + fieldType);
+        }
+      }
     }
 
-    // If opts.limit was passed, add a limit flag to the URL.
-    if (opts.limit) {
-      path += '&limit=' + opts.limit;
+    // Store our custom fields.
+    data.customFields = customFields;
+    return data;
+  }
+
+  /*
+   * Helper function to compare a given string to our Tableau field types.
+   *
+   * @param {string} fieldType
+   *   A given field type string.
+   * @return {bool}
+   *   True/false if a valid Tableau field type was found.
+   */
+  function isValidFieldType(fieldType) {
+    var tableauFieldTypes = [
+      'string',
+      'int',
+      'float',
+      'bool',
+      'datetime'
+    ];
+
+    return (Boolean)(tableauFieldTypes.indexOf(fieldType) !== -1);
+  }
+
+  /**
+   * Helper function to build params passed along to our proxy endpoint.
+   */
+  function buildApiParams(username, password, data, lastRecord) {
+    var fields = Object.keys(wdcFields[data.objType]),
+        customFields = Object.keys(data.customFields);
+
+    // If we have custom fields, append them to our query.
+    if (customFields.length) {
+      fields = fields.concat(customFields).join(',');
     }
 
-    return path;
+    return JSON.stringify({
+      'username': btoa(username),
+      'password': btoa(password),
+      'url': data.url,
+      'limit': data.limit || 500,
+      'last': lastRecord,
+      'objType': data.objType,
+      'options': {
+        'projectID': data.projectID,
+        'fields': fields
+      }
+    });
   }
 
   // Polyfill for btoa() in older browsers.

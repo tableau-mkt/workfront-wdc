@@ -11,13 +11,15 @@
     "postinstall": "grunt build"
   },
   "dependencies": {
+    "atob": "^2.0.0",
     "express": "^4.13.3",
-    "request": "^2.61.0",
     "grunt": "^0.4.5",
     "grunt-cli": "^0.1.13",
     "grunt-contrib-concat": "~0.5",
     "grunt-contrib-jshint": "~0.11",
-    "grunt-contrib-uglify": "~0.9"
+    "grunt-contrib-uglify": "~0.9",
+    "request": "^2.61.0",
+    "workfront-api": "^1.2.1"
   },
   "devDependencies": {
     "grunt-express-server": "~0.5",
