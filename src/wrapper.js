@@ -142,14 +142,23 @@ var wdcw = window.wdcw || {};
    * Extension of the web data connector API that handles complex connection
    * data getting for the implementor.
    *
+   * @param {string} property
+   *  (optional) specific property to return value for.
    * @returns {object}
    *   An object representing connection data. Keys are assumed to be form input
    *   names; values are assumed to be form input values.
    *
    * @see connector.setConnectionData
    */
-  connector.getConnectionData = function getConnectionData() {
-    return tableau.connectionData ? JSON.parse(tableau.connectionData) : {};
+  connector.getConnectionData = function getConnectionData(property) {
+    var data = tableau.connectionData ? JSON.parse(tableau.connectionData) : {};
+
+    if (property && typeof property === "string" && data.hasOwnProperty(property)) {
+      return data[property];
+    }
+    else {
+      return data;
+    }
   };
 
   /**
@@ -267,9 +276,9 @@ var wdcw = window.wdcw || {};
    */
   $(document).ready(function connectorDocumentReady() {
     $('form').submit(function connectorFormSubmitHandler(e) {
-      var $fields = $('input, select, textarea').not('[type="password"],[type="submit"],[id="username"]'),
-          $password = $('#password'),
-          $username = $('#username'),
+      var $fields = $('input, select, textarea').not('[type="password"],[type="submit"],[name="username"]'),
+          $password = $('input[type="password"]'),
+          $username = $('input[name="username"]'),
           data = {};
 
       e.preventDefault();
@@ -279,32 +288,8 @@ var wdcw = window.wdcw || {};
         var $this = $(this),
             name = $this.attr('name');
 
-        switch (name) {
-          case 'customFieldsUnparsed':
-            var lines =$this.val().split(/\n/),
-                parts,
-                fieldName,
-                fieldType,
-                customFields = {};
-
-
-            for (var i=0; i < lines.length; i++) {
-              parts = lines[i].split('|');
-
-              if (parts.length === 2) {
-                fieldName = parts[0].trim();
-                fieldType = parts[1].trim();
-                customFields[fieldName] = fieldType;
-              }
-            }
-
-            // Store both unparsed (for auto-population) and parsed values.
-            data[name] = $this.val();
-            data['customFields'] = customFields;
-            break;
-          default:
-            data[name] = $this.val();
-            break;
+        if (name) {
+          data[name] = $this.val();
         }
         return this;
       });
