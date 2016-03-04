@@ -262,12 +262,12 @@ module.exports = function($, tableau, wdcw) {
       'username': btoa(username),
       'password': btoa(password),
       'url': data.url,
-      'limit': data.limit || 5000,
       'last': lastRecord,
       'objType': data.objType,
       'options': {
         'projectID': data.projectID,
-        'fields': fields
+        'fields': fields,
+        '$$LIMIT': data.limit || 2000
       }
     });
   }
