@@ -5,7 +5,7 @@ var module = module || {},
     wdcw = window.wdcw || {},
     wdcFields = window.wdcFields || {};
 
-module.exports = function($, tableau, wdcw) {
+module.exports = function($, moment, tableau, wdcw) {
 
   /**
    * Run during initialization of the web data connector.
@@ -167,22 +167,22 @@ module.exports = function($, tableau, wdcw) {
    *   triggered.
    */
   wdcw.tableData = function tableData(registerData, lastRecord) {
-    var data = this.getConnectionData(),
+    var connectionData = this.getConnectionData(),
         username = this.getUsername(),
         password = this.getPassword();
 
     $.ajax({
       url: '/proxy',
       headers: {
-        workfrontapi: buildApiParams(username, password, data, lastRecord)
+        workfrontapi: buildApiParams(username, password, connectionData, lastRecord)
       },
       success: function dataRetrieved(response) {
         var processedData = [];
-
+        
         response.forEach(function processData(data) {
-          processedData.push(data);
+          processedData.push(parseData(connectionData, data));
         });
-
+        
         registerData(processedData);
       },
       // Use this.ajaxErrorHandler for basic error handling.
@@ -191,6 +191,38 @@ module.exports = function($, tableau, wdcw) {
   };
 
   // You can write private methods for use above like this:
+
+  /**
+   * Helper function to parse data to be compatible with Tableau data types.
+   */
+  function parseData(connectionData, data) {
+    var column,
+        customFields = connectionData['customFields'],
+        dataType,
+        objType = connectionData['objType'],
+        value;
+
+    for (column in data) {
+      if (wdcFields[objType].hasOwnProperty(column)) {
+        dataType = wdcFields[objType][column]
+      }
+      else if (customFields.hasOwnProperty(column)) {
+        dataType = customFields[column];
+      }
+
+      // Parse Workfront datetime strings (ISO -> YYYY-MM-dd HH:mm:ss)
+      if (dataType === 'datetime') {
+        if (data[column]) {
+          value = data[column].replace(/(\T\d{2}\:\d{2}\:\d{2}):/, '$1.');
+          value = moment(value).format('YYYY-MM-DD HH:mm:ss');
+
+          data[column] = value;
+        }
+      }
+    }
+
+    return data;
+  }
 
   /**
    * Helper function to preparte connector data.
@@ -310,4 +342,4 @@ module.exports = function($, tableau, wdcw) {
 };
 
 // Set the global wdcw variable as expected.
-wdcw = module.exports(jQuery, tableau, wdcw);
+wdcw = module.exports(jQuery, moment, tableau, wdcw);

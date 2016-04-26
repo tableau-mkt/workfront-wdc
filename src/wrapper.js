@@ -7,7 +7,7 @@
 
 var wdcw = window.wdcw || {};
 
-(function($, tableau, wdcw) {
+(function($, moment, tableau, wdcw) {
   var connector = tableau.makeConnector();
 
   /**
@@ -275,12 +275,17 @@ var wdcw = window.wdcw || {};
    * - Trigger the data collection phase of the web data connector.
    */
   $(document).ready(function connectorDocumentReady() {
-    $('form').submit(function connectorFormSubmitHandler(e) {
-      var $fields = $('input, select, textarea').not('[type="password"],[type="submit"],[name="username"]'),
-          $password = $('input[type="password"]'),
-          $username = $('input[name="username"]'),
-          data = {};
+    var $fields = $('input, select, textarea').not('[type="password"],[type="submit"],[name="username"]'),
+        $password = $('input[type="password"]'),
+        $username = $('input[name="username"]'),
+        data = {};
 
+    // Ensure we autofill existing password for easy data refresh.
+    if (connector.getPassword()) {
+      $password.val(connector.getPassword());
+    }
+
+    $('form').submit(function connectorFormSubmitHandler(e) {
       e.preventDefault();
 
       // Format connection data according to assumptions.
@@ -319,4 +324,4 @@ var wdcw = window.wdcw || {};
     });
   });
 
-})(jQuery, tableau, wdcw);
+})(jQuery, moment, tableau, wdcw);
