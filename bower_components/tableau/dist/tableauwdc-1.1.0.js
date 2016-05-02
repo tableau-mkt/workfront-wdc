@@ -1,6 +1,8 @@
 (function() {
 
-    var versionNumber = "1.1.0";
+    var versionNumber = "1.1.1";
+    var _sourceWindow;
+
     if (typeof tableauVersionBootstrap === 'undefined') {
         // tableau version bootstrap isn't defined. We are likely running in the simulator so init up our tableau object
         tableau = {
@@ -38,6 +40,22 @@
                 _sendMessage("abortWithError", {"errorMsg": errorMsg});
             }
         };
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // Attempt to notify the simulator window that the WDC has loaded
+            if(window.parent !== window) {
+                window.parent.postMessage(_buildMessagePayload('loaded'), '*');
+            }
+            if(window.opener) {
+                try { // Wrap in try/catch for older versions of IE
+                    window.opener.postMessage(_buildMessagePayload('loaded'), '*');
+                } catch(e) {
+                    console.warn('Some versions of IE may not accurately simulate the Web Data Connector.  Please retry on a Webkit based browser');
+                }
+            }
+        });
+
+
     } else { // Tableau version bootstrap is defined. Let's use it
         tableauVersionBootstrap.ReportVersionNumber(versionNumber);
     }
@@ -51,7 +69,7 @@
     tableau.versionNumber = versionNumber;
 
     tableau.phaseEnum = {
-        interactivePhase: "interactive", 
+        interactivePhase: "interactive",
         authPhase: "auth",
         gatherDataPhase: "gatherData"
     };
@@ -80,26 +98,38 @@
         window._wdc = wdc;
     };
 
-    function _sendMessage(msgName, msgData) {
-        var messagePayload = _buildMessagePayload(msgName, msgData);
+    // Seal the tableau object so that users can't add additional properties to it
+    Object.preventExtensions(tableau);
 
-        window.parent.postMessage(messagePayload, "*");
+    function _sendMessage(msgName, msgData) {
+        var messagePayload = _buildMessagePayload(msgName, msgData, _packagePropertyValues());
+
+        // Check first to see if we have a messageHandler defined to post the message to
+        if (typeof window.webkit != 'undefined' &&
+          typeof window.webkit.messageHandlers != 'undefined' &&
+          typeof window.webkit.messageHandlers.wdcHandler != 'undefined') {
+
+            window.webkit.messageHandlers.wdcHandler.postMessage(messagePayload);
+        } else if (!_sourceWindow) {
+            throw "Looks like the WDC is calling a tableau function before tableau.init() has been called."
+        } else {
+            _sourceWindow.postMessage(messagePayload, "*");
+        }
     }
 
-    function _buildMessagePayload(msgName, msgData) {
-        var msgObj = {"msgName": msgName,
-                      "props": _packagePropertyValues(),
-                      "msgData": msgData};
+    function _buildMessagePayload(msgName, msgData, props) {
+        var msgObj = {"msgName": msgName, "msgData": msgData, "props": props, "version": tableau.versionNumber };
+
         return JSON.stringify(msgObj);
     }
 
     function _packagePropertyValues() {
         var propValues = {"connectionName": tableau.connectionName,
-                          "connectionData": tableau.connectionData,
-                          "password": tableau.password,
-                          "username": tableau.username,
-                          "incrementalExtractColumn": tableau.incrementalExtractColumn,
-                          "versionNumber": tableau.versionNumber};
+            "connectionData": tableau.connectionData,
+            "password": tableau.password,
+            "username": tableau.username,
+            "incrementalExtractColumn": tableau.incrementalExtractColumn,
+            "versionNumber": tableau.versionNumber};
         return propValues;
     }
 
@@ -113,12 +143,30 @@
         }
     }
 
-    function _receiveMessage(event) {
+    function getPayloadObj(payloadString) {
+        var payload = null;
+        try {
+            payload = JSON.parse(payloadString);
+        } catch(e) {
+            return null;
+        }
+
+        return payload;
+    }
+
+    function _receiveMessage(evt) {
         var wdc = window._wdc;
         if (!wdc) {
             throw "No WDC registered. Did you forget to call tableau.registerConnector?";
         }
-        var payloadObj = JSON.parse(event.data);
+
+        var payloadObj = getPayloadObj(evt.data);
+        if(!payloadObj) return; // This message is not needed for WDC
+
+        if (!_sourceWindow) {
+            _sourceWindow = evt.source
+        }
+
         var msgData = payloadObj.msgData;
         _applyPropertyValues(payloadObj.props);
 
@@ -126,25 +174,27 @@
             case "init":
                 tableau.phase = msgData.phase;
                 wdc.init();
-            break;
+                break;
             case "shutdown":
                 wdc.shutdown();
-            break;
+                break;
             case "getColumnHeaders":
                 wdc.getColumnHeaders();
-            break;
+                break;
             case "getTableData":
                 wdc.getTableData(msgData.lastRecordToken);
-            break;
+                break;
         }
     };
 
     // Add global error handler. If there is a javascript error, this will report it to Tableau
     // so that it can be reported to the user.
     window.onerror = function (message, file, line, column, errorObj) {
+        console.error(errorObj); // print error for debugging in the browser
         if (tableau._hasAlreadyThrownErrorSoDontThrowAgain) {
             return true;
         }
+
         var msg = message;
         if(errorObj) {
             msg += "   stack:" + errorObj.stack;
