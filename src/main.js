@@ -98,9 +98,9 @@ module.exports = function($, moment, tableau, wdcw) {
    */
   wdcw.columnHeaders = function columnHeaders(registerHeaders) {
     var processedColumns = [],
-      column,
-      customFields = this.getConnectionData('customFields'),
-      objType = this.getConnectionData('objType');
+        column,
+        customFields = this.getConnectionData('customFields'),
+        objType = this.getConnectionData('objType');
 
     if (wdcFields.hasOwnProperty(objType)) {
       for (column in wdcFields[objType]) {
@@ -156,7 +156,7 @@ module.exports = function($, moment, tableau, wdcw) {
    */
   wdcw.tableData = function tableData(registerData) {
     var options = this.getConnectionData(),
-      processedData = [];
+        processedData = [];
 
     options.username = this.getUsername();
     options.password = this.getPassword();
