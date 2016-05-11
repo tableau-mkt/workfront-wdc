@@ -3,7 +3,9 @@ var module = module || {},
     jQuery = jQuery || {},
     tableau = tableau || {},
     wdcw = window.wdcw || {},
-    wdcFields = window.wdcFields || {};
+    wdcFields = window.wdcFields || {},
+    // The maximum number of records that can be retrieved in a single API call.
+    wfApiRecordLimit = 2000;
 
 module.exports = function($, moment, tableau, wdcw) {
 
@@ -96,7 +98,7 @@ module.exports = function($, moment, tableau, wdcw) {
    *     {name: 'DateTime Column', type: 'datetime', incrementalRefresh: true}
    *   ]);
    */
-  wdcw.columnHeaders = function columnHeaders(registerHeaders) {
+  wdcw.columnHeaders = function columnHeaders(registerHeaders, lastRecord) {
     var processedColumns = [],
         column,
         customFields = this.getConnectionData('customFields'),
@@ -154,23 +156,26 @@ module.exports = function($, moment, tableau, wdcw) {
    *   again, this time with the token you provide here. Once all data has been
    *   retrieved, pass null, false, 0, or an empty string.
    */
-  wdcw.tableData = function tableData(registerData) {
+  wdcw.tableData = function tableData(registerData, lastRecord) {
     var options = this.getConnectionData(),
         processedData = [];
 
     options.username = this.getUsername();
     options.password = this.getPassword();
-    options.lastRecord = 0;
+    options.firstRecord = 0;
+    options.limit = wfApiRecordLimit;
 
     getData(options, function getNextData(data) {
-      options.lastRecord += data.length;
+      options.firstRecord += data.length;
 
       // Process our data and add to the array of results.
       data.forEach(function shapeData(item) {
         processedData.push(parseData(options, item));
       });
 
-      if (data.length === 2000) {
+      // Support paginated responses. When we have more records than the maximum number per
+      // request, we do additional API calls until we have no more records.
+      if (data.length === options.limit) {
         getData(options, getNextData);
       } else {
         registerData(processedData);
@@ -272,7 +277,7 @@ module.exports = function($, moment, tableau, wdcw) {
    *
    * @param {string} fieldType
    *   A given field type string.
-   * @return {bool}
+   * @return {boolean}
    *   True/false if a valid Tableau field type was found.
    */
   function isValidFieldType(fieldType) {
@@ -307,8 +312,8 @@ module.exports = function($, moment, tableau, wdcw) {
       'options': {
         'projectID': options.projectID,
         'fields': fields,
-        '$$LIMIT': 2000,
-        '$$FIRST': options.lastRecord || 0
+        '$$LIMIT': options.limit,
+        '$$FIRST': options.firstRecord
       }
     });
   }
