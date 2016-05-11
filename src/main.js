@@ -153,54 +153,63 @@ module.exports = function($, moment, tableau, wdcw) {
    *   If provided, your implementation of the tableData method will be called
    *   again, this time with the token you provide here. Once all data has been
    *   retrieved, pass null, false, 0, or an empty string.
-   *
-   * @param {string} lastRecord
-   *   Optional. If you indicate in the call to registerData that more data is
-   *   available (by passing a token representing the last record retrieved),
-   *   then the lastRecord argument will be populated with the token that you
-   *   provided. Use this to update/modify the API call you make to handle
-   *   pagination or filtering.
-   *
-   *   If you indicated a column in wdcw.columnHeaders suitable for use during
-   *   an incremental extract refresh, the last value of the given column will
-   *   be passed as the value of lastRecord when an incremental refresh is
-   *   triggered.
    */
-  wdcw.tableData = function tableData(registerData, lastRecord) {
-    var connectionData = this.getConnectionData(),
-        username = this.getUsername(),
-        password = this.getPassword();
+  wdcw.tableData = function tableData(registerData) {
+    var options = this.getConnectionData(),
+      processedData = [];
 
-    $.ajax({
-      url: '/proxy',
-      headers: {
-        workfrontapi: buildApiParams(username, password, connectionData, lastRecord)
-      },
-      success: function dataRetrieved(response) {
-        var processedData = [];
-        
-        response.forEach(function processData(data) {
-          processedData.push(parseData(connectionData, data));
-        });
-        
+    options.username = this.getUsername();
+    options.password = this.getPassword();
+    options.lastRecord = 0;
+
+    getData(options, function getNextData(data) {
+      options.lastRecord += data.length;
+
+      // Process our data and add to the array of results.
+      data.forEach(function shapeData(item) {
+        processedData.push(parseData(options, item));
+      });
+
+      if (data.length === 2000) {
+        getData(options, getNextData);
+      } else {
         registerData(processedData);
-      },
-      // Use this.ajaxErrorHandler for basic error handling.
-      error: this.ajaxErrorHandler
+      }
     });
   };
 
   // You can write private methods for use above like this:
+  /**
+   * Ajax call to our API
+   *
+   * @param {array} options
+   *  An array of options.
+   * @param {function} callback
+   *  A callback function.
+   */
+  function getData (options, callback) {
+    $.ajax({
+      url: '/proxy',
+      headers: {
+        workfrontapi: buildApiParams(options)
+      },
+      success: function dataRetrieved(response) {
+        callback(response);
+      },
+      // Use this.ajaxErrorHandler for basic error handling.
+      error: this.ajaxErrorHandler
+    });
+  }
 
   /**
    * Helper function to parse data to be compatible with Tableau data types.
    */
-  function parseData(connectionData, data) {
+  function parseData(options, data) {
     var column,
-        customFields = connectionData['customFields'],
-        dataType,
-        objType = connectionData['objType'],
-        value;
+      customFields = options['customFields'],
+      dataType,
+      objType = options['objType'],
+      value;
 
     for (column in data) {
       if (wdcFields[objType].hasOwnProperty(column)) {
@@ -225,7 +234,7 @@ module.exports = function($, moment, tableau, wdcw) {
   }
 
   /**
-   * Helper function to preparte connector data.
+   * Helper function to prepare connector data.
    */
   function prepareConnectionData(data) {
     // Parse our raw custom fields string.
@@ -258,7 +267,7 @@ module.exports = function($, moment, tableau, wdcw) {
     return data;
   }
 
-  /*
+  /**
    * Helper function to compare a given string to our Tableau field types.
    *
    * @param {string} fieldType
@@ -281,9 +290,9 @@ module.exports = function($, moment, tableau, wdcw) {
   /**
    * Helper function to build params passed along to our proxy endpoint.
    */
-  function buildApiParams(username, password, data, lastRecord) {
-    var fields = Object.keys(wdcFields[data.objType]),
-        customFields = Object.keys(data.customFields);
+  function buildApiParams(options) {
+    var fields = Object.keys(wdcFields[options.objType]),
+      customFields = Object.keys(options.customFields);
 
     // If we have custom fields, append them to our query.
     if (customFields.length) {
@@ -291,15 +300,15 @@ module.exports = function($, moment, tableau, wdcw) {
     }
 
     return JSON.stringify({
-      'username': btoa(username),
-      'password': btoa(password),
-      'url': data.url,
-      'last': lastRecord,
-      'objType': data.objType,
+      'username': btoa(options.username),
+      'password': btoa(options.password),
+      'url': options.url,
+      'objType': options.objType,
       'options': {
-        'projectID': data.projectID,
+        'projectID': options.projectID,
         'fields': fields,
-        '$$LIMIT': data.limit || 2000
+        '$$LIMIT': 2000,
+        '$$FIRST': options.lastRecord || 0
       }
     });
   }
