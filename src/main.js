@@ -1,9 +1,9 @@
 var module = module || {},
-  window = window || {},
-  jQuery = jQuery || {},
-  tableau = tableau || {},
-  wdcw = window.wdcw || {},
-  wdcFields = window.wdcFields || {};
+    window = window || {},
+    jQuery = jQuery || {},
+    tableau = tableau || {},
+    wdcw = window.wdcw || {},
+    wdcFields = window.wdcFields || {};
 
 module.exports = function($, moment, tableau, wdcw) {
 
@@ -206,10 +206,10 @@ module.exports = function($, moment, tableau, wdcw) {
    */
   function parseData(options, data) {
     var column,
-      customFields = options['customFields'],
-      dataType,
-      objType = options['objType'],
-      value;
+        customFields = options['customFields'],
+        dataType,
+        objType = options['objType'],
+        value;
 
     for (column in data) {
       if (wdcFields[objType].hasOwnProperty(column)) {
@@ -239,10 +239,10 @@ module.exports = function($, moment, tableau, wdcw) {
   function prepareConnectionData(data) {
     // Parse our raw custom fields string.
     var lines = data.customFieldsRaw.split(/\n/),
-      parts,
-      fieldName,
-      fieldType,
-      customFields = {};
+        parts,
+        fieldName,
+        fieldType,
+        customFields = {};
 
     for (var i=0; i < lines.length; i++) {
       parts = lines[i].split('|');
@@ -267,7 +267,7 @@ module.exports = function($, moment, tableau, wdcw) {
     return data;
   }
 
-  /*
+  /**
    * Helper function to compare a given string to our Tableau field types.
    *
    * @param {string} fieldType
@@ -292,7 +292,7 @@ module.exports = function($, moment, tableau, wdcw) {
    */
   function buildApiParams(options) {
     var fields = Object.keys(wdcFields[options.objType]),
-      customFields = Object.keys(options.customFields);
+        customFields = Object.keys(options.customFields);
 
     // If we have custom fields, append them to our query.
     if (customFields.length) {
@@ -318,8 +318,8 @@ module.exports = function($, moment, tableau, wdcw) {
   if (typeof btoa === 'undefined') {
     function btoa(input) {
       var object = typeof exports != 'undefined' ? exports : this, // #8: web workers
-        chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=',
-        str = String(input);
+          chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=',
+          str = String(input);
 
       function InvalidCharacterError(message) {
         this.message = message;
