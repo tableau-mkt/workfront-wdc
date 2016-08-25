@@ -1,7 +1,13 @@
 {
-  "name": "workfront",
-  "description": "Tableau web data connector for Workfront",
-  "version": "0.0.0",
+  "name": "workfront-wdc",
+  "description": "Use Tableau to analyze your Workfront projects and issues.",
+  "homepage": "https://github.com/tableau-mkt/workfront-wdc",
+  "keywords": ["tableau-wdc", "workfront", "attask"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tableau-mkt/workfront-wdc.git"
+  },
+  "version": "0.1.0",
   "engines": {
     "node": "0.12.x"
   },
